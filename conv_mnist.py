@@ -97,6 +97,6 @@ with sess.as_default():
             print('step ' + str(i) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
         train_step.run(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 0.5})
 
-    print('test accuracy %g' % 100*accuracy.eval(feed_dict={
+    print('test accuracy %g' % accuracy.eval(feed_dict={
         x: mnist.test.images, y_true: mnist.test.labels, keep_prob: 1.0}))
 
