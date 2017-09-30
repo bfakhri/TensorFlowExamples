@@ -28,6 +28,8 @@ SIZE_X = 28
 SIZE_Y = 28
 NUM_CLASSES = 10 
 LEARN_RATE = 1e-4
+BATCH_SIZE = 512 
+MAX_TRAIN_STEPS = 1000 
 output_steps = 20
 
 # Placeholders for data and labels
@@ -81,6 +83,10 @@ train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(cross_entropy)
 # Create the session
 sess = tf.Session()
 
+# Create Summary Writer for TB
+writer = tf.summary.FileWriter('/tmp/logdir/1')
+writer.add_graph(sess.graph) 
+
 # Init all weights
 sess.run(tf.global_variables_initializer())
 
@@ -90,8 +96,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 # Train 
 with sess.as_default():
-    for i in range(200):
-        batch = mnist.train.next_batch(500)
+    for i in range(MAX_TRAIN_STEPS):
+        batch = mnist.train.next_batch(BATCH_SIZE)
         if i % output_steps == 0:
             train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
             print('step ' + str(i) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
