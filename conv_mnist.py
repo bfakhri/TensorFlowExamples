@@ -28,7 +28,7 @@ SIZE_X = 28
 SIZE_Y = 28
 NUM_CLASSES = 10 
 LEARN_RATE = 1e-4
-output_steps = 100
+output_steps = 20
 
 # Placeholders for data and labels
 x = tf.placeholder(tf.float32, shape=[None, SIZE_X*SIZE_Y])
@@ -87,20 +87,16 @@ sess.run(tf.global_variables_initializer())
 # Define test metrics
 correct_prediction = tf.equal(tf.argmax(y_pred,1), tf.argmax(y_true,1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-accuracy_eval = sess.run([accuracy], feed_dict={x: mnist.test.images, y_true: mnist.test.labels})
 
 # Train 
-for i in range(20000):
-    batch = mnist.train.next_batch(50)
-    if i % output_steps == 0:
-        train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0})
-        print('step %d, training accuracy %g' % (i, train_accuracy))
-    train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+with sess.as_default():
+    for i in range(200):
+        batch = mnist.train.next_batch(500)
+        if i % output_steps == 0:
+            train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
+            print('step ' + str(i) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
+        train_step.run(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 0.5})
 
-print('test accuracy %g' % accuracy.eval(feed_dict={
-    x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
-
-
-
-print("Model Accuracy: " + str(accuracy_eval[0]*100) + '%')
+    print('test accuracy %g' % 100*accuracy.eval(feed_dict={
+        x: mnist.test.images, y_true: mnist.test.labels, keep_prob: 1.0}))
 
