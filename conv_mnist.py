@@ -5,13 +5,13 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Define variable functions
-def weight_variable(shape):
+def weight_variable(shape, name="W"):
     initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial)
+    return tf.Variable(initial, name=name)
 
-def bias_variable(shape):
+def bias_variable(shape, name="B"):
     initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial)
+    return tf.Variable(initial, name=name)
 
 
 # Define conv and pool functions
@@ -22,6 +22,24 @@ def conv2d(x, W, name='conv'):
 def max_pool_2x2(x, name='max_pool'):
     with tf.name_scope(name):
         return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+# Define a Convolutional Layer 
+def conv_layer(x, fan_in, fan_out, name="convl"):
+    with tf.name_scope(name):
+        # Create Weight Variables
+        W = weight_variable([5, 5, fan_in, fan_out], name="W")
+        B = bias_variable([fan_out], name="B")
+        # Convolve the input using the weights
+        conv = conv2d(x, W)
+        # Push input+bias through activation function
+        activ = tf.nn.relu(conv + B)
+        # Create summaries for visualization
+        tf.summary.histogram("Weights", W)
+        tf.summary.histogram("Biases", B)
+        tf.summary.histogram("Activations", activ) 
+        # MaxPool Output
+        return max_pool_2x2(activ)
+
 
 # Get Data
 mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
@@ -46,26 +64,18 @@ with tf.name_scope('MainGraph'):
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
 
 
-    with tf.name_scope('Conv1'):
-        W_conv1 = weight_variable([5, 5, 1, 32])
-        b_conv1 = bias_variable([32])
+    #with tf.name_scope('Conv1'):
+    #    W_conv1 = weight_variable([5, 5, 1, 32])
+    #    b_conv1 = bias_variable([32])
 
-        h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
-        h_pool1 = max_pool_2x2(h_conv1)
-
-    with tf.name_scope('Conv2'):
-        W_conv2 = weight_variable([5, 5, 32, 64])
-        b_conv2 = bias_variable([64])
-
-        h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
-        h_pool2 = max_pool_2x2(h_conv2)
-
+    conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
+    conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
 
     with tf.name_scope('FC1'):
         W_fc1 = weight_variable([7 * 7 * 64, 1024])
         b_fc1 = bias_variable([1024])
         
-        h_pool2_flat = tf.reshape(h_pool2, [-1, 7*7*64])
+        h_pool2_flat = tf.reshape(conv2, [-1, 7*7*64])
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
 
@@ -88,8 +98,9 @@ train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(cross_entropy)
 # Create the session
 sess = tf.Session()
 
-# Create Summary Writer for TB
-writer = tf.summary.FileWriter('/tmp/logdir/1')
+# Merge Summaries and Create Summary Writer for TB
+all_summaries = tf.summary.merge_all()
+writer = tf.summary.FileWriter('/tmp/logdir/21')
 writer.add_graph(sess.graph) 
 
 # Init all weights
@@ -101,11 +112,13 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 # Train 
 with sess.as_default():
-    for i in range(MAX_TRAIN_STEPS):
+    for cur_step in range(MAX_TRAIN_STEPS):
         batch = mnist.train.next_batch(BATCH_SIZE)
-        if i % output_steps == 0:
+        if cur_step % output_steps == 0:
             train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
-            print('step ' + str(i) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
+            print('step ' + str(cur_step) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
+            all_sums = sess.run(all_summaries, feed_dict={x: batch[0], y_true: batch[1]})
+            writer.add_summary(all_sums, cur_step) 
         train_step.run(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 0.5})
 
     print('test accuracy %g' % accuracy.eval(feed_dict={
