@@ -1,6 +1,8 @@
 # Inspired by the TF Tutorial: https://www.tensorflow.org/get_started/mnist/pros
 
 import tensorflow as tf
+import numpy as np
+
 # Mnist Data
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
@@ -11,6 +13,7 @@ LEARN_RATE = 1e-4
 BATCH_SIZE = 512 
 MAX_TRAIN_STEPS = 1000 
 output_steps = 20
+SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 0})
 
 # Define variable functions
 def weight_variable(shape, name="W"):
@@ -66,22 +69,23 @@ with tf.name_scope('MainGraph'):
 
         # Reshape X to make it into a 2D image
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
+        tf.summary.image('sample_image', x_image, 3)
 
-
-    #with tf.name_scope('Conv1'):
-    #    W_conv1 = weight_variable([5, 5, 1, 32])
-    #    b_conv1 = bias_variable([32])
-
+    # Convolution Layers
     conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
     conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
+    
+    # Create image summaries to visualize layer outputs
+    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
+    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 3)
 
+    # Fully Connected Layers
     with tf.name_scope('FC1'):
         W_fc1 = weight_variable([7 * 7 * 64, 1024])
         b_fc1 = bias_variable([1024])
         
         h_pool2_flat = tf.reshape(conv2, [-1, 7*7*64])
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
-
 
     with tf.name_scope('FC1'):
         W_fc2 = weight_variable([1024, 10])
@@ -107,7 +111,7 @@ with tf.name_scope('MainGraph'):
 train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(cross_entropy)
 
 # Create the session
-sess = tf.Session()
+sess = tf.Session(config=SESS_CONFIG)
 
 # Init all weights
 sess.run(tf.global_variables_initializer())
