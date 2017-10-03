@@ -4,6 +4,14 @@ import tensorflow as tf
 # Mnist Data
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
+# Constants to eventually parameterise
+BASE_LOGDIR = '/tmp/tbdir/'
+RUN = '1'
+LEARN_RATE = 1e-4
+BATCH_SIZE = 512 
+MAX_TRAIN_STEPS = 1000 
+output_steps = 20
+
 # Define variable functions
 def weight_variable(shape, name="W"):
     initial = tf.truncated_normal(shape, stddev=0.1)
@@ -33,7 +41,7 @@ def conv_layer(x, fan_in, fan_out, name="convl"):
         conv = conv2d(x, W)
         # Push input+bias through activation function
         activ = tf.nn.relu(conv + B)
-        # Create summaries for visualization
+        # Create histograms for visualization
         tf.summary.histogram("Weights", W)
         tf.summary.histogram("Biases", B)
         tf.summary.histogram("Activations", activ) 
@@ -47,10 +55,6 @@ mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
 SIZE_X = 28
 SIZE_Y = 28
 NUM_CLASSES = 10 
-LEARN_RATE = 1e-4
-BATCH_SIZE = 512 
-MAX_TRAIN_STEPS = 1000 
-output_steps = 20
 
 with tf.name_scope('MainGraph'):
     with tf.name_scope('Inputs'):
@@ -90,34 +94,38 @@ with tf.name_scope('MainGraph'):
 
     with tf.name_scope('Objective'):
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_true, logits=y_pred))
+        tf.summary.scalar('cross_entropy', cross_entropy)
+
+    with tf.name_scope('Metrics'):
+        # Define test metrics
+        correct_prediction = tf.equal(tf.argmax(y_pred,1), tf.argmax(y_true,1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        # Create summary for accuracy
+        tf.summary.scalar('accuracy', accuracy)
 
 # Define the training step
 train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(cross_entropy)
 
-
 # Create the session
 sess = tf.Session()
-
-# Merge Summaries and Create Summary Writer for TB
-all_summaries = tf.summary.merge_all()
-writer = tf.summary.FileWriter('/tmp/logdir/21')
-writer.add_graph(sess.graph) 
 
 # Init all weights
 sess.run(tf.global_variables_initializer())
 
-# Define test metrics
-correct_prediction = tf.equal(tf.argmax(y_pred,1), tf.argmax(y_true,1))
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+# Merge Summaries and Create Summary Writer for TB
+all_summaries = tf.summary.merge_all()
+writer = tf.summary.FileWriter(BASE_LOGDIR + RUN)
+writer.add_graph(sess.graph) 
 
 # Train 
 with sess.as_default():
     for cur_step in range(MAX_TRAIN_STEPS):
         batch = mnist.train.next_batch(BATCH_SIZE)
         if cur_step % output_steps == 0:
-            train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
+            train_accuracy = sess.run(accuracy, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
             print('step ' + str(cur_step) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
-            all_sums = sess.run(all_summaries, feed_dict={x: batch[0], y_true: batch[1]})
+            # Calculate and write-out all summaries
+            all_sums = sess.run(all_summaries, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
             writer.add_summary(all_sums, cur_step) 
         train_step.run(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 0.5})
 
