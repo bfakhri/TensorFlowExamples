@@ -102,3 +102,4 @@ ENV/
 
 # Specific Dirs
 MNIST_data/
+logs/

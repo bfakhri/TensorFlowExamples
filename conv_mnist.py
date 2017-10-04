@@ -7,7 +7,7 @@ import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
-BASE_LOGDIR = '/tmp/tbdir/'
+BASE_LOGDIR = './logs/'
 RUN = '1'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 512 
