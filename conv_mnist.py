@@ -13,7 +13,8 @@ LEARN_RATE = 1e-4
 BATCH_SIZE = 512 
 MAX_TRAIN_STEPS = 1000 
 output_steps = 20
-SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 0})
+# Enable or disable GPU
+SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
 
 # Define variable functions
 def weight_variable(shape, name="W"):
@@ -127,7 +128,7 @@ with sess.as_default():
         batch = mnist.train.next_batch(BATCH_SIZE)
         if cur_step % output_steps == 0:
             train_accuracy = sess.run(accuracy, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
-            print('step ' + str(cur_step) + '\ttraining accuracy ' + str(round(100*train_accuracy, 2)) + '%')
+            print('Step: ' + str(cur_step) + '\t\tTrain Acc: ' + str(round(100*train_accuracy, 2)) + '%')
             # Calculate and write-out all summaries
             all_sums = sess.run(all_summaries, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
             writer.add_summary(all_sums, cur_step) 
