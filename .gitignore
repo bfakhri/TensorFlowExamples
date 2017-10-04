@@ -101,4 +101,4 @@ ENV/
 .mypy_cache/
 
 # Specific Dirs
-MNIST_DATA/
+MNIST_data/
