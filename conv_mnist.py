@@ -11,7 +11,8 @@ BASE_LOGDIR = './logs/'
 RUN = '1'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 512 
-MAX_TRAIN_STEPS = 1000 
+#MAX_TRAIN_STEPS = 1000 
+MAX_TRAIN_STEPS = 100 
 output_steps = 20
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
