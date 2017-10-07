@@ -11,8 +11,8 @@ BASE_LOGDIR = './logs/'
 RUN = '1'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 512 
-#MAX_TRAIN_STEPS = 1000 
-MAX_TRAIN_STEPS = 100 
+MAX_TRAIN_STEPS = 1000 
+#MAX_TRAIN_STEPS = 100 
 output_steps = 20
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
@@ -76,6 +76,16 @@ with tf.name_scope('MainGraph'):
     # Convolution Layers
     conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
     conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
+
+    #with tf.name_scope('Imager'):
+    #    W_fc_img1 = weight_variable([7, 7, 64, 7*7])
+    #    b_fc_img1 = bias_variable([7*7])
+    #    h_fc_img1 = tf.nn.relu(tf.matmul(conv2, W_fc_img1) + b_fc_img1)
+    #    img_pred = tf.reshape(h_fc_img1, [7,7])
+    #    img_true = tf.resize_images(x, [7,7])
+    #    mse = tf.losses.mean_squared_error(img_true, img_pred)
+        
+
     
     # Create image summaries to visualize layer outputs
     tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
@@ -83,14 +93,19 @@ with tf.name_scope('MainGraph'):
 
     # Fully Connected Layers
     with tf.name_scope('FC1'):
-        W_fc1 = weight_variable([7 * 7 * 64, 1024])
-        b_fc1 = bias_variable([1024])
+        W_fc1 = weight_variable([7 * 7 * 64, 7*7])
+        b_fc1 = bias_variable([7*7])
         
         h_pool2_flat = tf.reshape(conv2, [-1, 7*7*64])
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
+    with tf.name_scope('Imager_Reg'):
+        img_pred = tf.reshape(h_fc1, [7,7])
+        img_true = tf.image.resize_images(x_image, [7,7])
+        mse = tf.losses.mean_squared_error(tf.squeeze(img_true), img_pred)
+
     with tf.name_scope('FC1'):
-        W_fc2 = weight_variable([1024, 10])
+        W_fc2 = weight_variable([7*7, 10])
         b_fc2 = bias_variable([10])
         # Dropout Layer
         h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
