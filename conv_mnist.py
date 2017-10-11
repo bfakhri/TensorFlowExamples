@@ -10,7 +10,7 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 BASE_LOGDIR = './logs/'
 RUN = '2'
 LEARN_RATE = 1e-4
-BATCH_SIZE = 512 
+BATCH_SIZE = 2048 
 MAX_TRAIN_STEPS = 10000 
 #MAX_TRAIN_STEPS = 100 
 output_steps = 10
@@ -71,15 +71,15 @@ with tf.name_scope('MainGraph'):
 
         # Reshape X to make it into a 2D image
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
-        tf.summary.image('sample_image', x_image, 2)
+        tf.summary.image('sample_image', x_image, 3)
 
     # Convolution Layers
     conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
     conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
  
     # Create image summaries to visualize layer outputs
-    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 2)
-    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 2)
+    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
+    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 3)
 
     # Fully Connected Layers
     with tf.name_scope('FC1'):
@@ -95,8 +95,8 @@ with tf.name_scope('MainGraph'):
         mse = tf.losses.mean_squared_error(tf.squeeze(img_true), img_pred)
         tf.summary.scalar('image_mse', mse)
         # Display image in tensorboard
-        tf.summary.image('fc1_viz', tf.expand_dims(img_pred, axis=3), 2)
-        tf.summary.image('fc1_viz_gt', img_true, 2)
+        tf.summary.image('fc1_viz', tf.expand_dims(img_pred, axis=3), 3)
+        tf.summary.image('fc1_viz_gt', img_true, 3)
 
     with tf.name_scope('FC2'):
         W_fc2 = weight_variable([7*7, 10])
