@@ -8,12 +8,12 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
 BASE_LOGDIR = './logs/'
-RUN = '1'
+RUN = '2'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 512 
-MAX_TRAIN_STEPS = 1000 
+MAX_TRAIN_STEPS = 10000 
 #MAX_TRAIN_STEPS = 100 
-output_steps = 20
+output_steps = 10
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
 
@@ -71,25 +71,15 @@ with tf.name_scope('MainGraph'):
 
         # Reshape X to make it into a 2D image
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
-        tf.summary.image('sample_image', x_image, 3)
+        tf.summary.image('sample_image', x_image, 2)
 
     # Convolution Layers
     conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
     conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
-
-    #with tf.name_scope('Imager'):
-    #    W_fc_img1 = weight_variable([7, 7, 64, 7*7])
-    #    b_fc_img1 = bias_variable([7*7])
-    #    h_fc_img1 = tf.nn.relu(tf.matmul(conv2, W_fc_img1) + b_fc_img1)
-    #    img_pred = tf.reshape(h_fc_img1, [7,7])
-    #    img_true = tf.resize_images(x, [7,7])
-    #    mse = tf.losses.mean_squared_error(img_true, img_pred)
-        
-
-    
+ 
     # Create image summaries to visualize layer outputs
-    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
-    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 3)
+    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 2)
+    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 2)
 
     # Fully Connected Layers
     with tf.name_scope('FC1'):
@@ -100,11 +90,15 @@ with tf.name_scope('MainGraph'):
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
     with tf.name_scope('Imager_Reg'):
-        img_pred = tf.reshape(h_fc1, [7,7])
-        img_true = tf.image.resize_images(x_image, [7,7])
+        img_pred = tf.reshape(h_fc1, [-1, 7,7])
+        img_true = tf.image.resize_images(x_image, [7,7], method=tf.image.ResizeMethod.AREA, align_corners=True)
         mse = tf.losses.mean_squared_error(tf.squeeze(img_true), img_pred)
+        tf.summary.scalar('image_mse', mse)
+        # Display image in tensorboard
+        tf.summary.image('fc1_viz', tf.expand_dims(img_pred, axis=3), 2)
+        tf.summary.image('fc1_viz_gt', img_true, 2)
 
-    with tf.name_scope('FC1'):
+    with tf.name_scope('FC2'):
         W_fc2 = weight_variable([7*7, 10])
         b_fc2 = bias_variable([10])
         # Dropout Layer
@@ -125,7 +119,8 @@ with tf.name_scope('MainGraph'):
         tf.summary.scalar('accuracy', accuracy)
 
 # Define the training step
-train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(cross_entropy)
+train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(cross_entropy+10*mse)
+#train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(mse)
 
 # Create the session
 sess = tf.Session(config=SESS_CONFIG)
