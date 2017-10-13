@@ -10,8 +10,8 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 BASE_LOGDIR = './logs/'
 RUN = '1'
 LEARN_RATE = 1e-4
-BATCH_SIZE = 128 
-MAX_EPOCHS = 20 
+BATCH_SIZE = 256 
+MAX_EPOCHS = 10 
 output_steps = 20
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
