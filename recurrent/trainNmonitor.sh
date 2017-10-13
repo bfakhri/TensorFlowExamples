@@ -1,5 +1,5 @@
 #!/bin/sh 
-tmux new-session -s 'train' -d 'python conv_mnist.py'
+tmux new-session -s 'train' -d 'python lstm.py'
 tmux split-window -h 'watch -n 0.1 nvidia-smi'
 tmux split-window -v 'htop'
 tmux rename-window 'Monitor'
