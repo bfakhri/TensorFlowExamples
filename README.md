@@ -5,7 +5,7 @@ Examples use tensorboard for the visualization of training performance, outputs,
 
 # Structure
 
-The project is divided into directories named for the category of example. Each directory has a "parent" file and subdirectories use that file as a template. 
+The project is divided into directories named for the category of example. Each directory has a "template" file and subdirectories use that file as a template. 
 
 # Running
 
