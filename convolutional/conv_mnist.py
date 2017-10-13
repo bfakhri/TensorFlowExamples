@@ -10,8 +10,8 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 BASE_LOGDIR = './logs/'
 RUN = '1'
 LEARN_RATE = 1e-4
-BATCH_SIZE = 512 
-MAX_TRAIN_STEPS = 1000 
+BATCH_SIZE = 128 
+MAX_EPOCHS = 20 
 output_steps = 20
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
@@ -55,7 +55,7 @@ def conv_layer(x, fan_in, fan_out, name="convl"):
 
 # Get Data
 mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
-
+MAX_TRAIN_STEPS = MAX_EPOCHS*mnist.train._num_examples/BATCH_SIZE
 SIZE_X = 28
 SIZE_Y = 28
 NUM_CLASSES = 10 
@@ -130,7 +130,9 @@ with sess.as_default():
             train_accuracy = sess.run(accuracy, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
             print('Step: ' + str(cur_step) + '\t\tTrain Acc: ' + str(round(100*train_accuracy, 2)) + '%')
             # Calculate and write-out all summaries
-            all_sums = sess.run(all_summaries, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
+            # Validate on batch from validation set
+            val_batch = mnist.validation.next_batch(BATCH_SIZE)
+            all_sums = sess.run(all_summaries, feed_dict={x: val_batch[0], y_true: val_batch[1], keep_prob: 1.0})
             writer.add_summary(all_sums, cur_step) 
         train_step.run(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 0.5})
 
