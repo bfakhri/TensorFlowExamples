@@ -10,7 +10,7 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 BASE_LOGDIR = './logs/'
 RUN = '1'
 LEARN_RATE = 1e-4
-BATCH_SIZE = 2048 
+BATCH_SIZE = 512
 MAX_TRAIN_STEPS = 1000 
 output_steps = 20
 # Enable or disable GPU
@@ -25,40 +25,16 @@ def bias_variable(shape, name="B"):
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial, name=name)
 
-
-# Define conv and pool functions
-def conv2d(x, W, name='conv'):
-    with tf.name_scope(name):
-        return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
-
-def max_pool_2x2(x, name='max_pool'):
-    with tf.name_scope(name):
-        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-
-# Define a Convolutional Layer 
-def conv_layer(x, fan_in, fan_out, name="convl"):
-    with tf.name_scope(name):
-        # Create Weight Variables
-        W = weight_variable([5, 5, fan_in, fan_out], name="W")
-        B = bias_variable([fan_out], name="B")
-        # Convolve the input using the weights
-        conv = conv2d(x, W)
-        # Push input+bias through activation function
-        activ = tf.nn.relu(conv + B)
-        # Create histograms for visualization
-        tf.summary.histogram("Weights", W)
-        tf.summary.histogram("Biases", B)
-        tf.summary.histogram("Activations", activ) 
-        # MaxPool Output
-        return max_pool_2x2(activ)
-
-
 # Get Data
 mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
-
+# Data Params
 SIZE_X = 28
 SIZE_Y = 28
 NUM_CLASSES = 10 
+
+# LSTM Params
+CELL_SIZE = 256     # Number of weights in the cell
+NUM_CELLS = SIZE_X  # Number of cells in series
 
 with tf.name_scope('MainGraph'):
     with tf.name_scope('Inputs'):
@@ -72,29 +48,25 @@ with tf.name_scope('MainGraph'):
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
         tf.summary.image('sample_image', x_image, 3)
 
-    # Convolution Layers
-    conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
-    conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
-    
-    # Create image summaries to visualize layer outputs
-    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
-    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 3)
+        x_sq = tf.squeeze(x_image, axis=3)
 
-    # Fully Connected Layers
-    with tf.name_scope('FC1'):
-        W_fc1 = weight_variable([7 * 7 * 64, 1024])
-        b_fc1 = bias_variable([1024])
+    with tf.name_scope('LSTM'):
+        cell = tf.contrib.rnn.LSTMCell(CELL_SIZE, state_is_tuple=True)
+        x_sq = tf.transpose(x_sq, [1,0,2])
+        x_sq = tf.reshape(x_sq, [-1, SIZE_X])
+        x_split = tf.split(x_sq, SIZE_Y, axis=0)   # Create a tuple of vectors
+        #c_initial = tf.zeros((BATCH_SIZE, CELL_SIZE), dtype=np.float32)
+        #h_initial = tf.zeros((BATCH_SIZE, CELL_SIZE), dtype=np.float32)
+        #initial_state = tf.nn.rnn_cell.LSTMStateTuple(c_initial, h_initial)
+        #outputs, states = tf.nn.static_rnn(cell, x_split, initial_state=initial_state)
+        outputs, states = tf.nn.static_rnn(cell, x_split, dtype=tf.float32)
+
+    with tf.name_scope('FC'):
+        W_fc1 = weight_variable([CELL_SIZE, NUM_CLASSES])
+        b_fc1 = bias_variable([NUM_CLASSES])
         
-        h_pool2_flat = tf.reshape(conv2, [-1, 7*7*64])
-        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
-
-    with tf.name_scope('FC1'):
-        W_fc2 = weight_variable([1024, 10])
-        b_fc2 = bias_variable([10])
-        # Dropout Layer
-        h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
-        # FC Layer 2 - Output Layer
-        y_pred = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+        # Output Layer
+        y_pred = tf.matmul(outputs[-1], W_fc1) + b_fc1
 
 
     with tf.name_scope('Objective'):
