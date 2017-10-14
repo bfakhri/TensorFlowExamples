@@ -55,7 +55,7 @@ def conv_layer(x, fan_in, fan_out, name="convl"):
 
 # Get Data
 mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
-MAX_TRAIN_STEPS = MAX_EPOCHS*mnist.train._num_examples/BATCH_SIZE
+MAX_TRAIN_STEPS = MAX_EPOCHS*mnist.train.num_examples/BATCH_SIZE
 SIZE_X = 28
 SIZE_Y = 28
 NUM_CLASSES = 10 
