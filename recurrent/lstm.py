@@ -27,6 +27,7 @@ def bias_variable(shape, name="B"):
 
 # Get Data
 mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
+
 # Data Params
 SIZE_X = 28
 SIZE_Y = 28
@@ -51,22 +52,25 @@ with tf.name_scope('MainGraph'):
         x_sq = tf.squeeze(x_image, axis=3)
 
     with tf.name_scope('LSTM'):
+        # Define the LSTM cell
         cell = tf.contrib.rnn.LSTMCell(CELL_SIZE, state_is_tuple=True)
+        # Reorder axes from (?, 28, 28) to (28, ?, 28)
         x_sq = tf.transpose(x_sq, [1,0,2])
+        # Reshape to (?*28, 28)
         x_sq = tf.reshape(x_sq, [-1, SIZE_X])
-        x_split = tf.split(x_sq, SIZE_Y, axis=0)   # Create a tuple of vectors
-        #c_initial = tf.zeros((BATCH_SIZE, CELL_SIZE), dtype=np.float32)
-        #h_initial = tf.zeros((BATCH_SIZE, CELL_SIZE), dtype=np.float32)
-        #initial_state = tf.nn.rnn_cell.LSTMStateTuple(c_initial, h_initial)
-        #outputs, states = tf.nn.static_rnn(cell, x_split, initial_state=initial_state)
+        # Make a tuple of 28 arrays of size (?, 28)
+        x_split = tf.split(x_sq, SIZE_Y, axis=0)  
+        # Creates a series of 28 LSTM cells, 28 being the size of the x_split tuple
         outputs, states = tf.nn.static_rnn(cell, x_split, dtype=tf.float32)
 
     with tf.name_scope('FC'):
+        # Weights for fully connected layer
         W_fc1 = weight_variable([CELL_SIZE, NUM_CLASSES])
         b_fc1 = bias_variable([NUM_CLASSES])
-        
+        # Dropout
+        do_fc1 = tf.nn.dropout(outputs[-1], keep_prob)
         # Output Layer
-        y_pred = tf.matmul(outputs[-1], W_fc1) + b_fc1
+        y_pred = tf.matmul(do_fc1, W_fc1) + b_fc1
 
 
     with tf.name_scope('Objective'):
