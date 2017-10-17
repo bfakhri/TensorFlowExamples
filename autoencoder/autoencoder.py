@@ -8,10 +8,10 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
 BASE_LOGDIR = './logs/'
-RUN = '1'
+RUN = '2'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 256 
-MAX_EPOCHS = 10 
+MAX_EPOCHS = 1000 
 output_steps = 20
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
@@ -95,16 +95,18 @@ with tf.name_scope('MainGraph'):
         h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
         # FC Layer 2 - Output Layer
         y_pred = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
-        print("HEY")
-        print(y_pred)
 
-    with tf.name_scope('FC-UP'):
-        W_fc_up= weight_variable([10, SIZE_X*SIZE_Y])
-        b_fc_up = bias_variable([SIZE_X*SIZE_Y])
+    with tf.name_scope('FC-UP1'):
+        W_fc_up1 = weight_variable([10, 20])
+        b_fc_up1 = bias_variable([20])
         # FC Layer 2 - Output Layer
-        pred_vec = tf.matmul(y_pred, W_fc_up) + b_fc_up
-        print("HEY")
-        print(pred_vec)
+        h_fc_up1 = tf.matmul(y_pred, W_fc_up1) + b_fc_up1
+
+    with tf.name_scope('FC-UP2'):
+        W_fc_up2 = weight_variable([20, SIZE_X*SIZE_Y])
+        b_fc_up2 = bias_variable([SIZE_X*SIZE_Y])
+        # FC Layer 2 - Output Layer
+        pred_vec = tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2
         pred_img = tf.reshape(pred_vec, [-1, SIZE_X, SIZE_Y, 1])
 
     with tf.name_scope('Objective'):
