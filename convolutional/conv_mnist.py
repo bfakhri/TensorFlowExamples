@@ -7,16 +7,21 @@ import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
+## Base Dir to write logs to
 BASE_LOGDIR = './logs/'
+## Subdirectory for this experiment
 RUN = '1'
+## Learning Rate for Adam Optimizer
 LEARN_RATE = 1e-4
 BATCH_SIZE = 256 
+## Number of Epochs to train for
 MAX_EPOCHS = 10 
+## How many training steps between outputs to screen and tensorboard
 output_steps = 20
-# Enable or disable GPU
+# Enable or disable GPU (0 disables GPU, 1 enables GPU)
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
 
-# Define variable functions
+# Define functions that create useful variables
 def weight_variable(shape, name="W"):
     initial = tf.truncated_normal(shape, stddev=0.1)
     return tf.Variable(initial, name=name)
@@ -26,11 +31,13 @@ def bias_variable(shape, name="B"):
     return tf.Variable(initial, name=name)
 
 
-# Define conv and pool functions
+# 2D Convolution Func 
 def conv2d(x, W, name='conv'):
     with tf.name_scope(name):
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
+# Max-Pooling Function (Pooling explained here: 
+# http://ufldl.stanford.edu/tutorial/supervised/Pooling/)
 def max_pool_2x2(x, name='max_pool'):
     with tf.name_scope(name):
         return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
@@ -56,16 +63,23 @@ def conv_layer(x, fan_in, fan_out, name="convl"):
 # Get Data
 mnist = mnist_data.read_data_sets("MNIST_data/", one_hot=True)
 MAX_TRAIN_STEPS = int(MAX_EPOCHS*mnist.train.num_examples/BATCH_SIZE)
-SIZE_X = 28
-SIZE_Y = 28
-NUM_CLASSES = 10 
+SIZE_X = 28     # Number of pixels in x direction
+SIZE_Y = 28     # Number of pixels in y direction
+NUM_CLASSES = 10# Number of classes in the dataset 
 
+# Begin Defining the Computational Graph
 with tf.name_scope('MainGraph'):
     with tf.name_scope('Inputs'):
         # Placeholders for data and labels
+        ## Mnist gives images as flat vectors, thus the size [None, SizeX*SizeY] 
+        ## instead of the more intuitive [None, SizeX, SizeY]
         x = tf.placeholder(tf.float32, shape=[None, SIZE_X*SIZE_Y])
+
+        ## Ground-Truth Labels, as 1-hot vectors
         y_true = tf.placeholder(tf.float32, shape=[None, NUM_CLASSES])
-        # Dropout Placeholder (probability of dropping)
+
+        ## Dropout probability. Dropout is similar to model averaging
+        ## https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf
         keep_prob = tf.placeholder(tf.float32)
 
         # Reshape X to make it into a 2D image
@@ -88,7 +102,7 @@ with tf.name_scope('MainGraph'):
         h_pool2_flat = tf.reshape(conv2, [-1, 7*7*64])
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
-    with tf.name_scope('FC1'):
+    with tf.name_scope('FC2'):
         W_fc2 = weight_variable([1024, 10])
         b_fc2 = bias_variable([10])
         # Dropout Layer
@@ -98,6 +112,7 @@ with tf.name_scope('MainGraph'):
 
 
     with tf.name_scope('Objective'):
+        # Define the objective function
         cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_true, logits=y_pred))
         tf.summary.scalar('cross_entropy', cross_entropy)
 
