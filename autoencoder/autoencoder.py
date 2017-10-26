@@ -108,7 +108,7 @@ with tf.name_scope('MainGraph'):
         # Generate KL-Divergence Loss
         #nas_latent_sigma = tf.square(tf.nn.l2_normalize(latent_sigma, dim=0, epsilon=1e-12))
         nas_latent_sigma = tf.square(latent_sigma)
-        batch_kl_div = tf.log(1/nas_latent_sigma) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2 - 0.5
+        batch_kl_div = tf.log(1/nas_latent_sigma+1e-9) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2.0 - 0.5
 
         kl_div = tf.reduce_sum(batch_kl_div)
         tf.summary.scalar('KL-Divergence', kl_div)
