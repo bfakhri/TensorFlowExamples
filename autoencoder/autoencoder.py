@@ -65,54 +65,44 @@ with tf.name_scope('MainGraph'):
         # Placeholders for data and labels
         x = tf.placeholder(tf.float32, shape=[None, SIZE_X*SIZE_Y])
         y_true = tf.placeholder(tf.float32, shape=[None, NUM_CLASSES])
-        # Dropout Placeholder (probability of dropping)
-        keep_prob = tf.placeholder(tf.float32)
 
         # Reshape X to make it into a 2D image
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
-        tf.summary.image('sample_image', x_image, 3)
+        tf.summary.image('original_image', x_image, 3)
 
-    # Convolution Layers
-    conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
-    conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
+    # FC Encoder Layers
     
-    # Create image summaries to visualize layer outputs
-    tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
-    tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 3)
 
     # Fully Connected Layers
-    with tf.name_scope('FC1'):
-        W_fc1 = weight_variable([7 * 7 * 64, 1024])
+    with tf.name_scope('encoder_FC1'):
+        W_fc1 = weight_variable([SIZE_X*SIZE_Y, 1024])
         b_fc1 = bias_variable([1024])
         
-        h_pool2_flat = tf.reshape(conv2, [-1, 7*7*64])
-        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+        h_fc1 = tf.nn.relu(tf.matmul(x, W_fc1) + b_fc1)
 
-    with tf.name_scope('FC1'):
-        W_fc2 = weight_variable([1024, 10])
-        b_fc2 = bias_variable([10])
-        # Dropout Layer
-        h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+    with tf.name_scope('encoder_FC2'):
+        W_fc2 = weight_variable([1024, 512])
+        b_fc2 = bias_variable([512])
         # FC Layer 2 - Output Layer
-        y_pred = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
+        z = tf.matmul(h_fc1, W_fc2) + b_fc2
 
-    with tf.name_scope('FC-UP1'):
-        W_fc_up1 = weight_variable([10, 20])
-        b_fc_up1 = bias_variable([20])
+    with tf.name_scope('decoder_FC1'):
+        W_fc_up1 = weight_variable([512, 1024])
+        b_fc_up1 = bias_variable([1024])
         # FC Layer 2 - Output Layer
-        h_fc_up1 = tf.matmul(y_pred, W_fc_up1) + b_fc_up1
+        h_fc_up1 = tf.matmul(z, W_fc_up1) + b_fc_up1
 
-    with tf.name_scope('FC-UP2'):
-        W_fc_up2 = weight_variable([20, SIZE_X*SIZE_Y])
+    with tf.name_scope('decoder_FC2'):
+        W_fc_up2 = weight_variable([1024, SIZE_X*SIZE_Y])
         b_fc_up2 = bias_variable([SIZE_X*SIZE_Y])
         # FC Layer 2 - Output Layer
-        pred_vec = tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2
-        pred_img = tf.reshape(pred_vec, [-1, SIZE_X, SIZE_Y, 1])
+        gen_vec = tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2
+        gen_img = tf.reshape(gen_vec, [-1, SIZE_X, SIZE_Y, 1])
 
     with tf.name_scope('Objective'):
-        mse = tf.losses.mean_squared_error(tf.squeeze(x), pred_vec)
+        mse = tf.losses.mean_squared_error(tf.squeeze(x), gen_vec)
         tf.summary.scalar('mse', mse)
-        tf.summary.image('Gen', pred_img, 3)
+        tf.summary.image('Gen', gen_img, 3)
 
 
 # Define the training step
@@ -134,13 +124,13 @@ with sess.as_default():
     for cur_step in range(MAX_TRAIN_STEPS):
         batch = mnist.train.next_batch(BATCH_SIZE)
         if cur_step % output_steps == 0:
-            train_mse = sess.run(mse, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
+            train_mse = sess.run(mse, feed_dict={x: batch[0], y_true: batch[1]})
             print('Step: ' + str(cur_step) + '\t\tTrain mse: ' + str(train_mse))
             # Calculate and write-out all summaries
             # Validate on batch from validation set
             val_batch = mnist.validation.next_batch(BATCH_SIZE)
-            all_sums = sess.run(all_summaries, feed_dict={x: val_batch[0], y_true: val_batch[1], keep_prob: 1.0})
+            all_sums = sess.run(all_summaries, feed_dict={x: val_batch[0], y_true: val_batch[1]})
             writer.add_summary(all_sums, cur_step) 
-        train_step.run(feed_dict={x: batch[0], y_true: batch[1], keep_prob: 0.5})
+        train_step.run(feed_dict={x: batch[0], y_true: batch[1]})
 
 
