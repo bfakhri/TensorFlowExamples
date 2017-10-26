@@ -10,7 +10,7 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 BASE_LOGDIR = './logs/'
 RUN = '2'
 LEARN_RATE = 1e-4
-BATCH_SIZE = 16 
+BATCH_SIZE = 256 
 MAX_EPOCHS = 1000 
 output_steps = 20
 # Enable or disable GPU
@@ -106,15 +106,21 @@ with tf.name_scope('MainGraph'):
 
     with tf.name_scope('Objective'):
         # Generate KL-Divergence Loss
-        nas_latent_sigma = tf.square(tf.nn.l2_normalize(latent_sigma, dim=0, epsilon=1e-12))
+        #nas_latent_sigma = tf.square(tf.nn.l2_normalize(latent_sigma, dim=0, epsilon=1e-12))
+        nas_latent_sigma = tf.square(latent_sigma)
         batch_kl_div = tf.log(1/nas_latent_sigma) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2 - 0.5
-        kl_div = tf.reduce_sum(batch_kl_div)
 
+        kl_div = tf.reduce_sum(batch_kl_div)
+        tf.summary.scalar('KL-Divergence', kl_div)
         mse = tf.losses.mean_squared_error(gen_vec, x)
+        tf.summary.scalar('mse', mse)
+        total_loss = kl_div+2000*mse
+        tf.summary.scalar('Total_Loss', total_loss)
+
 
 
 # Define the training step
-train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(kl_div+100*mse)
+train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(total_loss)
 
 # Create the session
 sess = tf.Session(config=SESS_CONFIG)
