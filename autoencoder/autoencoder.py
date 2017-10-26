@@ -10,7 +10,7 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 BASE_LOGDIR = './logs/'
 RUN = '2'
 LEARN_RATE = 1e-4
-BATCH_SIZE = 256 
+BATCH_SIZE = 16 
 MAX_EPOCHS = 1000 
 output_steps = 20
 # Enable or disable GPU
@@ -70,10 +70,8 @@ with tf.name_scope('MainGraph'):
         x_image = tf.reshape(x, [-1, SIZE_X, SIZE_Y, 1])
         tf.summary.image('original_image', x_image, 3)
 
-    # FC Encoder Layers
-    
 
-    # Fully Connected Layers
+    # FC Encoder Layers
     with tf.name_scope('encoder_FC1'):
         W_fc1 = weight_variable([SIZE_X*SIZE_Y, 1024])
         b_fc1 = bias_variable([1024])
@@ -84,10 +82,16 @@ with tf.name_scope('MainGraph'):
         W_fc2 = weight_variable([1024, 512])
         b_fc2 = bias_variable([512])
         # FC Layer 2 - Output Layer
-        z = tf.matmul(h_fc1, W_fc2) + b_fc2
+        latent = tf.matmul(h_fc1, W_fc2) + b_fc2
+    with tf.name_scope('latent_space'):
+        # Split latent variable into mean and std devs
+        latent_mu, latent_sigma = tf.split(latent, [256, 256], 1)
+        # Generate the noise component epsilon as a standard normal RV
+        epsilon = tf.random_normal(tf.shape(latent_mu), 0, 1, dtype=tf.float32)
+        z = latent_mu + latent_sigma*epsilon
 
     with tf.name_scope('decoder_FC1'):
-        W_fc_up1 = weight_variable([512, 1024])
+        W_fc_up1 = weight_variable([256, 1024])
         b_fc_up1 = bias_variable([1024])
         # FC Layer 2 - Output Layer
         h_fc_up1 = tf.matmul(z, W_fc_up1) + b_fc_up1
@@ -98,15 +102,19 @@ with tf.name_scope('MainGraph'):
         # FC Layer 2 - Output Layer
         gen_vec = tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2
         gen_img = tf.reshape(gen_vec, [-1, SIZE_X, SIZE_Y, 1])
+        tf.summary.image('Generated_Image', gen_img, 3)
 
     with tf.name_scope('Objective'):
-        mse = tf.losses.mean_squared_error(tf.squeeze(x), gen_vec)
-        tf.summary.scalar('mse', mse)
-        tf.summary.image('Gen', gen_img, 3)
+        # Generate KL-Divergence Loss
+        nas_latent_sigma = tf.square(tf.nn.l2_normalize(latent_sigma, dim=0, epsilon=1e-12))
+        batch_kl_div = tf.log(1/nas_latent_sigma) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2 - 0.5
+        kl_div = tf.reduce_sum(batch_kl_div)
+
+        mse = tf.losses.mean_squared_error(gen_vec, x)
 
 
 # Define the training step
-train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(mse)
+train_step = tf.train.AdamOptimizer(LEARN_RATE).minimize(kl_div+100*mse)
 
 # Create the session
 sess = tf.Session(config=SESS_CONFIG)
@@ -124,8 +132,9 @@ with sess.as_default():
     for cur_step in range(MAX_TRAIN_STEPS):
         batch = mnist.train.next_batch(BATCH_SIZE)
         if cur_step % output_steps == 0:
-            train_mse = sess.run(mse, feed_dict={x: batch[0], y_true: batch[1]})
-            print('Step: ' + str(cur_step) + '\t\tTrain mse: ' + str(train_mse))
+            train_kl_div = sess.run(kl_div, feed_dict={x: batch[0], y_true: batch[1]})
+            #train_kl_div = sess.run(n_latent_sigma, feed_dict={x: batch[0], y_true: batch[1]})
+            print('Step: ' + str(cur_step) + '\t\tTrain kld: ' + str(train_kl_div))
             # Calculate and write-out all summaries
             # Validate on batch from validation set
             val_batch = mnist.validation.next_batch(BATCH_SIZE)
