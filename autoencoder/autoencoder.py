@@ -113,11 +113,11 @@ with tf.name_scope('MainGraph'):
 
         kl_div = -0.5*tf.reduce_sum(batch_kl_div)
         tf.summary.scalar('KL-Divergence', kl_div)
-        #mse = tf.losses.mean_squared_error(gen_vec, x)
-        #tf.summary.scalar('mse', mse)
+        generation_loss = tf.losses.mean_squared_error(gen_vec, x)
+        tf.summary.scalar('generation_loss', generation_loss)
         #total_loss = kl_div+2000*mse
 
-	generation_loss = -tf.reduce_sum(x * tf.log(1e-6 + gen_vec) + (1.0-x) * tf.log(1e-6 + 1.0 - gen_vec),1)
+	#generation_loss = -tf.reduce_sum(x * tf.log(1e-6 + gen_vec) + (1.0-x) * tf.log(1e-6 + 1.0 - gen_vec),1)
         #tf.summary.scalar('Generation_Loss', generation_loss)
 
 	total_loss = tf.reduce_mean(kl_div + generation_loss)
