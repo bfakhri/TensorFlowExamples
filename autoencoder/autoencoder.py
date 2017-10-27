@@ -8,9 +8,9 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
 BASE_LOGDIR = './logs/'
-RUN = '2'
-LEARN_RATE = 1e-4
-BATCH_SIZE = 256 
+RUN = '12'
+LEARN_RATE = 1e-5
+BATCH_SIZE = 1024 
 MAX_EPOCHS = 1000 
 output_steps = 20
 # Enable or disable GPU
@@ -108,15 +108,21 @@ with tf.name_scope('MainGraph'):
         # Generate KL-Divergence Loss
         #nas_latent_sigma = tf.square(tf.nn.l2_normalize(latent_sigma, dim=0, epsilon=1e-12))
         nas_latent_sigma = tf.square(latent_sigma)
-        batch_kl_div = tf.log(1/nas_latent_sigma+1e-9) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2.0 - 0.5
+        #batch_kl_div = tf.log(1/nas_latent_sigma+1e-9) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2.0 - 0.5
+        batch_kl_div = 1.0 + tf.log(tf.square(latent_sigma)+1e-6) - tf.square(latent_mu) - tf.square(latent_sigma) 
 
-        kl_div = tf.reduce_sum(batch_kl_div)
+        kl_div = -0.5*tf.reduce_sum(batch_kl_div)
         tf.summary.scalar('KL-Divergence', kl_div)
-        mse = tf.losses.mean_squared_error(gen_vec, x)
-        tf.summary.scalar('mse', mse)
-        total_loss = kl_div+2000*mse
-        tf.summary.scalar('Total_Loss', total_loss)
+        #mse = tf.losses.mean_squared_error(gen_vec, x)
+        #tf.summary.scalar('mse', mse)
+        #total_loss = kl_div+2000*mse
 
+	generation_loss = -tf.reduce_sum(x * tf.log(1e-6 + gen_vec) + (1.0-x) * tf.log(1e-6 + 1.0 - gen_vec),1)
+        #tf.summary.scalar('Generation_Loss', generation_loss)
+
+	total_loss = tf.reduce_mean(kl_div + generation_loss)
+
+        tf.summary.scalar('Total_Loss', total_loss)
 
 
 # Define the training step
