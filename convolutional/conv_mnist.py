@@ -13,12 +13,13 @@ BASE_LOGDIR = './logs/'
 RUN = '1'
 ## Learning Rate for Adam Optimizer
 LEARN_RATE = 1e-4
+## Number of images to push through the network at a time
 BATCH_SIZE = 256 
 ## Number of Epochs to train for
 MAX_EPOCHS = 10 
 ## How many training steps between outputs to screen and tensorboard
 output_steps = 20
-# Enable or disable GPU (0 disables GPU, 1 enables GPU)
+## Enable or disable GPU (0 disables GPU, 1 enables GPU)
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
 
 # Define functions that create useful variables
@@ -36,8 +37,8 @@ def conv2d(x, W, name='conv'):
     with tf.name_scope(name):
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
-# Max-Pooling Function (Pooling explained here: 
-# http://ufldl.stanford.edu/tutorial/supervised/Pooling/)
+# Max-Pooling Function - Pooling explained here: 
+# http://ufldl.stanford.edu/tutorial/supervised/Pooling/
 def max_pool_2x2(x, name='max_pool'):
     with tf.name_scope(name):
         return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
@@ -90,7 +91,7 @@ with tf.name_scope('MainGraph'):
     conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
     conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
     
-    # Create image summaries to visualize layer outputs
+    # Create image summaries to visualize layer outputs in Tensorboard
     tf.summary.image('conv1_viz', tf.expand_dims(conv1[:,:,:,1], axis=3), 3)
     tf.summary.image('conv2_viz', tf.expand_dims(conv2[:,:,:,1], axis=3), 3)
 
