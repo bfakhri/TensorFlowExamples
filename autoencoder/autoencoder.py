@@ -81,20 +81,15 @@ with tf.name_scope('MainGraph'):
         tf.summary.image('Generated_Image', gen_img, 3)
 
     with tf.name_scope('Objective'):
-        # Generate KL-Divergence Loss
-        #nas_latent_sigma = tf.square(tf.nn.l2_normalize(latent_sigma, dim=0, epsilon=1e-12))
-        nas_latent_sigma = tf.square(latent_sigma)
-        #batch_kl_div = tf.log(1/nas_latent_sigma+1e-9) + (nas_latent_sigma*nas_latent_sigma + latent_mu*latent_mu)/2.0 - 0.5
-        batch_kl_div = 1.0 + tf.log(tf.square(latent_sigma)+1e-6) - tf.square(latent_mu) - tf.square(latent_sigma) 
+        with tf.name_scope('KLD'):
+            # Generate KL-Divergence Loss
+            batch_kl_div = 1.0 + tf.log(tf.square(latent_sigma)+1e-6) - tf.square(latent_mu) - tf.square(latent_sigma) 
+            kl_div = -0.5*tf.reduce_sum(batch_kl_div)
+            tf.summary.scalar('KL-Divergence', kl_div)
 
-        kl_div = -0.5*tf.reduce_sum(batch_kl_div)
-        tf.summary.scalar('KL-Divergence', kl_div)
-        generation_loss = tf.losses.mean_squared_error(gen_vec, x)
-        tf.summary.scalar('generation_loss', generation_loss)
-        #total_loss = kl_div+2000*mse
-
-	#generation_loss = -tf.reduce_sum(x * tf.log(1e-6 + gen_vec) + (1.0-x) * tf.log(1e-6 + 1.0 - gen_vec),1)
-        #tf.summary.scalar('Generation_Loss', generation_loss)
+        with tf.name_scope('Generation_Loss'):
+            generation_loss = tf.losses.mean_squared_error(gen_vec, x)
+            tf.summary.scalar('generation_loss', generation_loss)
 
 	#total_loss = tf.reduce_mean(kl_div + generation_loss)
 	total_loss = tf.reduce_mean(generation_loss)
