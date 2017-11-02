@@ -11,8 +11,12 @@ BASE_LOGDIR = './logs/'
 RUN = '12'
 LEARN_RATE = 1e-5
 BATCH_SIZE = 1024 
-MAX_EPOCHS = 1000 
+MAX_EPOCHS = 10000
 output_steps = 20
+
+# Activation function to use for layers
+act_func = tf.nn.softplus
+
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
 
@@ -25,32 +29,6 @@ def bias_variable(shape, name="B"):
     initial = tf.constant(0.1, shape=shape)
     return tf.Variable(initial, name=name)
 
-
-# Define conv and pool functions
-def conv2d(x, W, name='conv'):
-    with tf.name_scope(name):
-        return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
-
-def max_pool_2x2(x, name='max_pool'):
-    with tf.name_scope(name):
-        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-
-# Define a Convolutional Layer 
-def conv_layer(x, fan_in, fan_out, name="convl"):
-    with tf.name_scope(name):
-        # Create Weight Variables
-        W = weight_variable([5, 5, fan_in, fan_out], name="W")
-        B = bias_variable([fan_out], name="B")
-        # Convolve the input using the weights
-        conv = conv2d(x, W)
-        # Push input+bias through activation function
-        activ = tf.nn.relu(conv + B)
-        # Create histograms for visualization
-        tf.summary.histogram("Weights", W)
-        tf.summary.histogram("Biases", B)
-        tf.summary.histogram("Activations", activ) 
-        # MaxPool Output
-        return max_pool_2x2(activ)
 
 
 # Get Data
@@ -74,15 +52,14 @@ with tf.name_scope('MainGraph'):
     # FC Encoder Layers
     with tf.name_scope('encoder_FC1'):
         W_fc1 = weight_variable([SIZE_X*SIZE_Y, 1024])
-        b_fc1 = bias_variable([1024])
-        
-        h_fc1 = tf.nn.relu(tf.matmul(x, W_fc1) + b_fc1)
+        b_fc1 = bias_variable([1024]) 
+        h_fc1 = act_func(tf.matmul(x, W_fc1) + b_fc1)
 
     with tf.name_scope('encoder_FC2'):
         W_fc2 = weight_variable([1024, 512])
         b_fc2 = bias_variable([512])
-        # FC Layer 2 - Output Layer
-        latent = tf.matmul(h_fc1, W_fc2) + b_fc2
+        latent = act_func(tf.matmul(h_fc1, W_fc2) + b_fc2)
+
     with tf.name_scope('latent_space'):
         # Split latent variable into mean and std devs
         latent_mu, latent_sigma = tf.split(latent, [256, 256], 1)
@@ -93,14 +70,13 @@ with tf.name_scope('MainGraph'):
     with tf.name_scope('decoder_FC1'):
         W_fc_up1 = weight_variable([256, 1024])
         b_fc_up1 = bias_variable([1024])
-        # FC Layer 2 - Output Layer
-        h_fc_up1 = tf.matmul(z, W_fc_up1) + b_fc_up1
+        h_fc_up1 = act_func(tf.matmul(z, W_fc_up1) + b_fc_up1)
 
     with tf.name_scope('decoder_FC2'):
         W_fc_up2 = weight_variable([1024, SIZE_X*SIZE_Y])
         b_fc_up2 = bias_variable([SIZE_X*SIZE_Y])
-        # FC Layer 2 - Output Layer
-        gen_vec = tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2
+        gen_vec = act_func(tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2)
+        # Reshape and display
         gen_img = tf.reshape(gen_vec, [-1, SIZE_X, SIZE_Y, 1])
         tf.summary.image('Generated_Image', gen_img, 3)
 
@@ -120,7 +96,8 @@ with tf.name_scope('MainGraph'):
 	#generation_loss = -tf.reduce_sum(x * tf.log(1e-6 + gen_vec) + (1.0-x) * tf.log(1e-6 + 1.0 - gen_vec),1)
         #tf.summary.scalar('Generation_Loss', generation_loss)
 
-	total_loss = tf.reduce_mean(kl_div + generation_loss)
+	#total_loss = tf.reduce_mean(kl_div + generation_loss)
+	total_loss = tf.reduce_mean(generation_loss)
 
         tf.summary.scalar('Total_Loss', total_loss)
 
@@ -144,9 +121,9 @@ with sess.as_default():
     for cur_step in range(MAX_TRAIN_STEPS):
         batch = mnist.train.next_batch(BATCH_SIZE)
         if cur_step % output_steps == 0:
-            train_kl_div = sess.run(kl_div, feed_dict={x: batch[0], y_true: batch[1]})
+            train_kl_div, train_generation_loss = sess.run([kl_div, generation_loss], feed_dict={x: batch[0], y_true: batch[1]})
             #train_kl_div = sess.run(n_latent_sigma, feed_dict={x: batch[0], y_true: batch[1]})
-            print('Step: ' + str(cur_step) + '\t\tTrain kld: ' + str(train_kl_div))
+            print('Step: ' + str(cur_step) + '\t\tTrain kld: ' + str(train_kl_div) + '\t\tTrain GenLoss: ' + str(train_generation_loss))
             # Calculate and write-out all summaries
             # Validate on batch from validation set
             val_batch = mnist.validation.next_batch(BATCH_SIZE)
