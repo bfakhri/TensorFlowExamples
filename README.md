@@ -16,3 +16,9 @@ Running this launches a tmux session with the following windows and panes:
 	- nvidia-smi (for monitoring gpu)
 	- htop (for monitoring cpu)
 2) Tensorboard - if running locally, connect via browser using "localhost:12345"
+
+
+
+![alt text](https://github.com/bfakhri/tf/blob/master/images/monitor.png "Training Monitor")
+![alt text](https://github.com/bfakhri/tf/blob/master/images/tb_graph.png "TB Graph")
+![alt text](https://github.com/bfakhri/tf/blob/master/images/tb_imgs.png "TB Images")
