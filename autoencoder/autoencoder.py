@@ -8,14 +8,16 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
 BASE_LOGDIR = './logs/'
-RUN = '12'
-LEARN_RATE = 1e-5
-BATCH_SIZE = 1024 
+RUN = 'split'
+LEARN_RATE = 1e-4
+BATCH_SIZE = 2048
 MAX_EPOCHS = 10000
 output_steps = 20
+latent_size = 10
 
 # Activation function to use for layers
-act_func = tf.nn.softplus
+#act_func = tf.nn.softplus
+act_func = tf.nn.tanh
 
 # Enable or disable GPU
 SESS_CONFIG = tf.ConfigProto(device_count = {'GPU': 1})
@@ -51,31 +53,45 @@ with tf.name_scope('MainGraph'):
 
     # FC Encoder Layers
     with tf.name_scope('encoder_FC1'):
-        W_fc1 = weight_variable([SIZE_X*SIZE_Y, 1024])
-        b_fc1 = bias_variable([1024]) 
+        W_fc1 = weight_variable([SIZE_X*SIZE_Y, 512])
+        b_fc1 = bias_variable([512]) 
         h_fc1 = act_func(tf.matmul(x, W_fc1) + b_fc1)
+        tf.summary.histogram('W_fc1', W_fc1)
+        tf.summary.histogram('b_fc1', b_fc1)
 
     with tf.name_scope('encoder_FC2'):
-        W_fc2 = weight_variable([1024, 512])
+        W_fc2 = weight_variable([512, 512])
         b_fc2 = bias_variable([512])
-        latent = act_func(tf.matmul(h_fc1, W_fc2) + b_fc2)
+        tf.summary.histogram('W_fc2', W_fc2)
+        tf.summary.histogram('b_fc2', b_fc2)
+        h_fc2 = tf.matmul(h_fc1, W_fc2) + b_fc2
+
+    with tf.name_scope('encoder_latent'):
+        W_fc_mu = weight_variable([512, latent_size])
+        W_fc_sigma = weight_variable([512, latent_size])
+        b_fc_mu = bias_variable([latent_size])
+        b_fc_sigma = bias_variable([latent_size])
+        latent_mu = tf.matmul(h_fc2, W_fc_mu) + b_fc_mu
+        latent_sigma = tf.matmul(h_fc2, W_fc_sigma) + b_fc_sigma
 
     with tf.name_scope('latent_space'):
-        # Split latent variable into mean and std devs
-        latent_mu, latent_sigma = tf.split(latent, [256, 256], 1)
+        latent_sigma = tf.nn.softplus(latent_sigma) + 1e-6 
+        tf.summary.histogram('latent_mu', latent_mu)
+        tf.summary.histogram('latent_sigma', latent_sigma)
         # Generate the noise component epsilon as a standard normal RV
         epsilon = tf.random_normal(tf.shape(latent_mu), 0, 1, dtype=tf.float32)
         z = latent_mu + latent_sigma*epsilon
 
     with tf.name_scope('decoder_FC1'):
-        W_fc_up1 = weight_variable([256, 1024])
-        b_fc_up1 = bias_variable([1024])
+        W_fc_up1 = weight_variable([latent_size, 512])
+        b_fc_up1 = bias_variable([512])
         h_fc_up1 = act_func(tf.matmul(z, W_fc_up1) + b_fc_up1)
 
     with tf.name_scope('decoder_FC2'):
-        W_fc_up2 = weight_variable([1024, SIZE_X*SIZE_Y])
+        W_fc_up2 = weight_variable([512, SIZE_X*SIZE_Y])
         b_fc_up2 = bias_variable([SIZE_X*SIZE_Y])
-        gen_vec = act_func(tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2)
+        #gen_vec = act_func(tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2)
+        gen_vec = tf.sigmoid(tf.matmul(h_fc_up1, W_fc_up2) + b_fc_up2)
         # Reshape and display
         gen_img = tf.reshape(gen_vec, [-1, SIZE_X, SIZE_Y, 1])
         tf.summary.image('Generated_Image', gen_img, 3)
@@ -93,8 +109,7 @@ with tf.name_scope('MainGraph'):
             generation_loss = tf.losses.mean_squared_error(gen_vec, x)
             tf.summary.scalar('generation_loss', generation_loss)
 
-	total_loss = kl_div + generation_loss
-	#total_loss = tf.reduce_mean(generation_loss)
+        total_loss = kl_div + generation_loss
 
         tf.summary.scalar('Total_Loss', total_loss)
 
