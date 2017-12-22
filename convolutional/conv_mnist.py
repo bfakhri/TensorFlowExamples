@@ -10,7 +10,7 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 ## Base Dir to write logs to
 BASE_LOGDIR = './logs/'
 ## Subdirectory for this experiment
-RUN = '1'
+RUN = '3'
 ## Learning Rate for Adam Optimizer
 LEARN_RATE = 1e-4
 ## Number of images to push through the network at a time
