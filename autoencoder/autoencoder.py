@@ -8,12 +8,13 @@ from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 
 # Constants to eventually parameterise
 BASE_LOGDIR = './logs/'
-RUN = 'split'
+RUN = 'beta1-reconf'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 2048
 MAX_EPOCHS = 10000
 output_steps = 20
 latent_size = 10
+beta = 0
 
 # Activation function to use for layers
 #act_func = tf.nn.softplus
@@ -75,12 +76,12 @@ with tf.name_scope('MainGraph'):
         latent_sigma = tf.matmul(h_fc2, W_fc_sigma) + b_fc_sigma
 
     with tf.name_scope('latent_space'):
-        latent_sigma = tf.nn.softplus(latent_sigma) + 1e-6 
+        log_sigma = tf.nn.softplus(latent_sigma) + 1e-6 
         tf.summary.histogram('latent_mu', latent_mu)
         tf.summary.histogram('latent_sigma', latent_sigma)
         # Generate the noise component epsilon as a standard normal RV
         epsilon = tf.random_normal(tf.shape(latent_mu), 0, 1, dtype=tf.float32)
-        z = latent_mu + latent_sigma*epsilon
+        z = latent_mu + tf.exp(log_sigma)*epsilon
 
     with tf.name_scope('decoder_FC1'):
         W_fc_up1 = weight_variable([latent_size, 512])
@@ -99,8 +100,7 @@ with tf.name_scope('MainGraph'):
     with tf.name_scope('Objective'):
         with tf.name_scope('KLD'):
             # Generate KL-Divergence Loss
-            #batch_kl_div = 1.0 + tf.log(tf.square(latent_sigma)+1e-6) - tf.square(latent_mu) - tf.square(latent_sigma) 
-            batch_kl_div = tf.log(latent_sigma) + (1.0+tf.square(latent_mu))/(2.0*tf.square(latent_sigma)) - 0.5
+            batch_kl_div = log_sigma + (tf.exp(log_sigma)+latent_mu*latent_mu)/(2*(tf.exp(log_sigma)*tf.exp(log_sigma))) - 0.5
 
             kl_div = tf.reduce_sum(batch_kl_div)
             tf.summary.scalar('KL-Divergence', kl_div)
@@ -109,7 +109,7 @@ with tf.name_scope('MainGraph'):
             generation_loss = tf.losses.mean_squared_error(gen_vec, x)
             tf.summary.scalar('generation_loss', generation_loss)
 
-        total_loss = kl_div + generation_loss
+        total_loss = generation_loss + beta*kl_div 
 
         tf.summary.scalar('Total_Loss', total_loss)
 
