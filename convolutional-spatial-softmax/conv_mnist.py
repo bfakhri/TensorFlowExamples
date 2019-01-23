@@ -92,6 +92,8 @@ with tf.name_scope('MainGraph'):
     # Convolution Layers
     conv1 = conv_layer(x_image, 1, 32, name='Conv1') 
     conv2 = conv_layer(conv1, 32, 64, name='Conv2') 
+    for i in range(100):
+        print(i, conv2.shape)
     
     # Here we implement spatial softmax
     conv2_exp = conv2
@@ -102,7 +104,8 @@ with tf.name_scope('MainGraph'):
     conv2_ssm = tf.transpose(tf.reshape(conv2_ssm, [-1, 1, conv2.shape[1], conv2.shape[2]]), [0, 2, 3, 1])
     print(conv2_ssm.shape)
     #conv2_ssm =  tf.contrib.layers.spatial_softmax(conv2, name='Conv2-ssm') 
-    tf.summary.image('conv2_viz_smm1', tf.expand_dims(conv2_ssm[:,:,:,0], axis=3), 3)
+    #tf.summary.image('conv2_viz_smm1', tf.expand_dims(conv2_ssm[:,:,:,0], axis=3), 3)
+    tf.summary.image('conv2_viz_smm1', conv2_ssm[:,:,:], 3)
     #tf.summary.image('conv2_viz_smm2', tf.expand_dims(conv2_ssm[:,:,:,0], axis=3), 3)
 
     # Fully Connected Layers
@@ -153,8 +156,9 @@ with sess.as_default():
     for cur_step in range(MAX_TRAIN_STEPS):
         batch = mnist.train.next_batch(BATCH_SIZE)
         if cur_step % output_steps == 0:
-            train_accuracy = sess.run(accuracy, feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
+            train_accuracy, ssm_out = sess.run([accuracy, conv2_ssm], feed_dict={x: batch[0], y_true: batch[1], keep_prob: 1.0})
             print('Step: ' + str(cur_step) + '\t\tTrain Acc: ' + str(round(100*train_accuracy, 2)) + '%')
+            print(sum(sum(sum(ssm_out))))
             # Calculate and write-out all summaries
             # Validate on batch from validation set
             val_batch = mnist.validation.next_batch(BATCH_SIZE)
